@@ -1,0 +1,437 @@
+{
+  "name": "LLM Wiki by GitHub",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🚀 匯入前必做（兩件事）\n\n**1. 還沒匯入的話，先改這份 JSON：**\n用文字編輯器打開這個 json 檔，「全部取代」一次：\n\n`YOUR_GITHUB_USERNAME` → 你的 GitHub 帳號名稱\n\n（檔案裡所有出現的位置會一起改好，改完再匯入。）\n\n**2. 你的 repo 必須叫 `llm-wiki`**\n（用老師給的 template 建立時取這個名字。\n如果取了別的名字，就把 JSON 裡的 `llm-wiki` 也全部取代成你的 repo 名。）\n\n**匯入之後：**\n- 點開每個有紅色驚嘆號的節點，在 Credential 欄選你自己的憑證\n  （GitHub 憑證填你的 Personal Access Token；Mistral 填課堂提供的 API key）\n- 全部綠燈後，先傳一份小文件測試",
+        "height": 448,
+        "width": 420,
+        "color": 3
+      },
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "Sticky Note SETUP",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-496, -48]
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload Document",
+        "formDescription": "Upload your knowledge document",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Document",
+              "fieldType": "file",
+              "fieldName": "doc",
+              "acceptFileTypes": ".pdf, .md"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "45bf6295-9e51-4ef3-bb24-3abb4af27090",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [0, 112],
+      "webhookId": "a8ddb1fc-7cc2-4e5b-8261-0dc687b8206f"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "doc",
+        "options": {}
+      },
+      "id": "7cfd6889-21c3-4837-b57f-f7a2d85491de",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [224, 112]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/llm-wiki/main/index.md",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "27d9a264-1cb1-479f-af6a-fe2a6c4f5332",
+      "name": "get-current-index",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [448, 112]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the current Wiki index (all existing entries):\n{{ $json.data }}\n\nHere is the content of the document the user uploaded:\n{{ $('Extract from File').item.json.data }}\n\nToday's date: {{ $now.format('yyyy-MM-dd') }}\n\nOrganize the document into a readable wiki article with entity cards and knowledge triples, then write it into the Wiki.",
+        "options": {
+          "systemMessage": "你是 Wiki 知識庫的維護者。使用者上傳一份文件，你要把它整理成一篇好讀的 wiki 文章\n（並附上結構化的實體與三元組），寫進 GitHub repo。\n\n目前的 index.md 全文已經在使用者訊息中提供，不要再去讀取它。\n\n## 可用工具\n\n- wiki-reader：讀取 wiki/ 下某個檔案，回傳純文字 Markdown。\n  輸入 File_Name，只要檔名不用加 wiki/，例如 2026-07-22-rag.md\n- wiki_creater：建立新的 wiki 檔案。輸入 File_Path、wiki_content、commit_message\n- wiki_updater：覆蓋既有的 wiki 檔案。輸入 File_Path、wiki_content、commit_message\n- index-updater：覆蓋 index.md。輸入 index_content、commit_message\n\n## Wiki 檔案格式（務必嚴格遵守）\n\n每個 wiki 檔案分成兩大部分：\n（一）給人讀的正文，要佔整篇的大部分篇幅\n（二）給機器用的「實體卡片」與「知識三元組」\n\n最重要的原則：**正文要能讓沒看過原文的人讀懂這份文件在講什麼。**\n三元組是額外的結構化索引，不是用來取代正文的。\n絕對不要因為寫了三元組就把正文寫得很少。\n\n---\ntitle: 主題名稱\nsource: 原始檔案名稱\ncreated: YYYY-MM-DD\nupdated: YYYY-MM-DD\nstatus: 已定案 或 討論中（若原文有未定案的內容就寫討論中）\ntags: [標籤1, 標籤2]\nsummary: 兩到三句摘要。\n---\n\n# 主題名稱\n\n（若原文有「待議」「草稿」「暫定」等字樣，在這裡放一行警語：\n> ⚠️ 本文來源為某某，其中某某部分尚未定案，引用前請確認。）\n\n## 摘要\n\n（三到五句話說明這個主題在講什麼）\n\n## 正文\n\n用你自己判斷最合適的小節來組織，讓人好讀。原則：\n\n- 原文如果有「定位」「一句話說明」「總結」這類句子，原封不動保留下來，\n  這通常是整份文件的核心。\n- 原文如果在比較多個對象（例如多個方案、版本、產品層級），\n  就每個對象寫一個小節，把屬於它的資訊收在一起。\n  不要硬做成表格——來源文件經過文字抽取後，表格的欄位對應通常已經跑掉了，\n  硬做會對錯欄位。條列比錯誤的表格好。\n- 原文的流程、步驟、機制，用文字或編號清單完整寫出來。\n- 原文有講「為什麼這樣設計」的理由，一定要保留，這是三元組表達不出來的東西。\n\n## 待議與備註\n\n（這一段是必要的，不可以省略。）\n\n把原文裡「尚未定案」「待議」「※」「暫定」「備註」的內容全部列在這裡。\n如果原文確實沒有任何待議事項，就寫「原文無待議事項」。\n\n注意：不要把未定案的事情寫成已定案的樣子。\n例如原文寫「年費授權※待議」，就不可以只寫「採用年費授權」。\n\n---\n\n## 實體卡片\n\n每個實體一行，格式固定為：\n\n- **實體名稱**（類型）：一句話說明這個實體是什麼。\n\n類型請從下列選一個：概念 / 產品 / 功能 / 角色 / 組織 / 技術 / 流程 / 指標 / 事件\n\n實體名稱要乾淨，不可以夾帶數值或括號補充。\n  正確：**使用者席次**（指標）、**辨識碼**（流程）\n  錯誤：**使用者數（2 席）**、**授權啟動機制（辨識碼）**\n數值請寫在後面的說明句裡，或放在正文。\n\n## 知識三元組\n\n每個三元組一行，格式固定為：\n\n- A >> 關係 >> B\n\n規則：\n- A 和 B 都必須是「實體卡片」裡出現過的實體名稱，一字不差。\n  寫完之後自己檢查一遍，有對不上的就修掉。\n- 關係用簡短的動詞片語，例如：包含 / 屬於 / 需要 / 產生 / 限制 / 取代 /\n  支援 / 依賴 / 導致 / 用於 / 提供給 / 不支援 / 部署於 / 體現\n- **只寫有鑑別力的關係**。如果好幾個對象都有同一個屬性，\n  寫一條說明就好，不要每個對象各寫一遍。重點放在「彼此的差異」。\n- 同一組關係不要重複寫。\n- 數量以涵蓋主要事實為準，不要為了湊數量而灌水。通常 15 到 35 條之間。\n- 只寫文件裡真的有講的關係，不要自己推論或補充常識。\n\n## 原文出處\n\n（來源檔名或連結）\n\n## 流程\n\n1. 把文件切成「最多 3 個」主題，寧可少而廣，不要多而細。\n   一份文件通常對應 1 到 2 個主題。\n\n2. 主題「一次處理一個」，嚴格照順序。完全做完主題 1 才能開始主題 2。\n\n   針對目前這個主題：\n\n   【index.md 裡已經有這個主題】\n     a. wiki-reader 讀出該檔案現有內容\n     b. 把新的正文、實體與三元組合併進去，重複的不要再加一次。\n        既有的正文內容不可以刪掉，只能補充。\n     c. wiki_updater 寫回合併後的完整內容\n        注意：這是整份覆蓋，你送出的必須是完整檔案，不是只有新增的部分\n     這個主題要等 wiki_updater 成功才算完成。\n\n   【index.md 裡沒有這個主題】\n     a. wiki_creater 建立新檔，路徑為 wiki/YYYY-MM-DD-主題.md\n     這個主題要等 wiki_creater 成功才算完成。\n\n3. 所有主題的 wiki 檔案都處理完之後，呼叫 index-updater 一次，\n   把 index.md 更新好。index_content 必須是「完整的 index.md 全文」：\n   - 保留所有既有的文章區塊，不可以遺漏\n   - 檔頭的「最後更新」改成今天\n   - 檔頭的「文章總數」重算\n   - 新文章的區塊插在 <!-- n8n:append-here --> 這一行的上方\n   - 每個區塊要包含：路徑、來源、建立日期、最後更新、標籤、摘要、三元組數量\n   - 既有文章若有更新，只改它的「最後更新」「摘要」「三元組數量」，\n     建立日期保持原樣\n\n4. 完成後回報，並停止呼叫任何工具：\n\n✅ 更新的主題：[主題]（路徑，N 條三元組）\n🆕 新建的頁面：[主題]（路徑，N 條三元組）\n\n## 規則\n\n- 每個動作都必須是真正的 tool call。寫成文字的 tool call 不會被執行。\n- 使用上面列出的參數名稱，不要自己發明參數。\n- 不要用相同的輸入重複呼叫同一個工具。\n- 日期一律使用使用者訊息中提供的日期，不要自己編造。",
+          "maxIterations": 25
+        }
+      },
+      "id": "c2325961-9bd5-452a-b73b-b86fe122ac2c",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [864, 0]
+    },
+    {
+      "parameters": {
+        "model": "mistral-large-latest",
+        "options": {}
+      },
+      "id": "2b0d3112-5803-495a-86f6-236addc8085a",
+      "name": "M1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [672, 224]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "編輯 index.md 將 wiki 的變化同步。index_content 必須是完整的 index.md 全文。",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GITHUB_USERNAME",
+          "cachedResultName": "YOUR_GITHUB_USERNAME"
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": "llm-wiki",
+          "cachedResultName": "llm-wiki"
+        },
+        "filePath": "index.md",
+        "fileContent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('index_content') }}",
+        "commitMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('commit_message') }}"
+      },
+      "id": "69026cbd-cf5d-45b5-869c-716f56ea61b4",
+      "name": "index-updater",
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [800, 224],
+      "webhookId": "380d4ab8-3867-4b4a-92ac-08a5196a2ecc"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "在 GitHub repo 的 wiki/ 下產生新的 wiki md 檔。wiki_content 必須包含給人讀的正文，以及「實體卡片」與「知識三元組」兩段。",
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GITHUB_USERNAME",
+          "cachedResultName": "YOUR_GITHUB_USERNAME"
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": "llm-wiki",
+          "cachedResultName": "llm-wiki"
+        },
+        "filePath": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('File_Path', '在 wiki/ 後產生檔案') }}",
+        "fileContent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('wiki_content') }}",
+        "commitMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('commit_message') }}"
+      },
+      "id": "35a593a4-5f54-44f8-9e36-065dec16b744",
+      "name": "wiki_creater",
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [928, 224],
+      "webhookId": "45f2c818-2d56-4fd5-bc86-330d1fa74a62"
+    },
+    {
+      "parameters": {
+        "toolDescription": "讀取 wiki/ 下某個檔案的完整內容，回傳純文字 Markdown。\n當你需要某篇文章的細節（正文、實體卡片、知識三元組、待議與備註），\n而 index.md 的摘要不夠用時，用這個工具。\n輸入 File_Name，只要檔名，不要加 wiki/ 前綴，例如 2026-07-22-rag.md。",
+        "url": "=https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/llm-wiki/main/wiki/{{ $fromAI(\"File_Name\", \"檔名，例如 2026-07-22-rag.md\", \"string\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "5ed9d77c-9a72-499e-b818-f6dcfd5efad9",
+      "name": "wiki-reader",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [1056, 224]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "覆蓋 GitHub repo 的 wiki/ 下既有的 wiki md 檔。wiki_content 必須是完整檔案內容，包含給人讀的正文與「實體卡片」「知識三元組」兩段。既有正文不可以刪掉。",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GITHUB_USERNAME",
+          "cachedResultName": "YOUR_GITHUB_USERNAME"
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": "llm-wiki",
+          "cachedResultName": "llm-wiki"
+        },
+        "filePath": "={{ $fromAI('File_Path', `在 wiki/ 後產生檔案`, 'string') }}",
+        "fileContent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('wiki_content') }}",
+        "commitMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('commit_message') }}"
+      },
+      "id": "1f40bbab-a3d2-4382-9b0a-aa3b2d54a5a7",
+      "name": "wiki_updater",
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [1184, 224],
+      "webhookId": "d1e7a34f-75be-4c9e-85ca-aabaaa96cd12"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1955bf9-4d85-4718-b8e2-f372e1c8df1d",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [336, 544],
+      "webhookId": "f295fbfc-6c64-4e40-aa22-b51405dd7017"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/llm-wiki/main/index.md",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "7fd2a329-587d-47ae-b537-83d8e6e0f0ab",
+      "name": "get-current-index2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [560, 544]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the current Wiki index (all existing entries):\n{{ $json.data }}\n\nUser question:\n{{ $('When chat message received').item.json.chatInput }}",
+        "options": {
+          "systemMessage": "你是 Wiki 知識庫的查詢助理，根據 Wiki 內容回答使用者的問題。\n\n目前的 index.md 全文已經在使用者訊息中提供，不要再去讀取它。\nindex.md 裡有每篇文章的標題、路徑、標籤、摘要與最後更新日期。\n\n## 可用工具\n\n- wiki-reader2：讀取 wiki/ 下某個檔案，回傳純文字 Markdown。\n  輸入 File_Name，只要檔名不用加 wiki/，例如 2026-07-22-rag.md\n\n## Wiki 檔案的結構\n\n每個 wiki 檔案分成兩部分：\n- 前半是給人讀的正文（摘要、正文、待議與備註）\n- 後半是「實體卡片」與「知識三元組」，三元組格式是「A >> 關係 >> B」\n\n回答問題時：\n- 問「是什麼、為什麼、怎麼做」→ 主要看正文\n- 問「A 跟 B 有什麼關係、哪些東西有某個屬性」→ 主要看三元組\n- 「待議與備註」裡的內容代表尚未定案，引用時必須註明還在討論中，\n  不可以講得像已經確定的事。\n\n## 流程\n\n1. 掃過 index.md 裡每篇的標籤與摘要。\n2. 判斷哪一篇（或哪幾篇）跟問題最相關。\n3. 用 wiki-reader2 讀出該檔案的完整內容。\n4. 依問題類型決定主要看正文還是三元組，再根據內容回答。\n\n## 規則\n\n- 唯讀，不要修改任何內容。\n- 如果 index 裡找不到相關主題，直接告訴使用者：「Wiki 裡還沒有這個主題。」\n- 回答要基於 Wiki 內容，不要自己編造。\n- 回答時附上你參考的檔案路徑。\n- 如果有用到三元組推理，把用到的那幾條列出來，讓使用者看得到推理依據。\n- 如果該篇的「最後更新」距今超過半年，提醒使用者資料可能過時。"
+        }
+      },
+      "id": "2d0616bc-91de-4a42-b13e-41e74e65b2df",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [848, 544]
+    },
+    {
+      "parameters": {
+        "model": "mistral-medium-latest",
+        "options": {}
+      },
+      "id": "62a13dc2-92b3-4a08-bab7-b92cc8458f9e",
+      "name": "M2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [784, 768]
+    },
+    {
+      "parameters": {},
+      "id": "9a508bd0-79e8-43af-818b-e6592b1a1582",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [912, 768]
+    },
+    {
+      "parameters": {
+        "toolDescription": "讀取 wiki/ 下某個檔案的完整內容，回傳純文字 Markdown。\n當你需要某篇文章的細節（正文、實體卡片、知識三元組、待議與備註），\n而 index.md 的摘要不夠用時，用這個工具。\n輸入 File_Name，只要檔名，不要加 wiki/ 前綴，例如 2026-07-22-rag.md。",
+        "url": "=https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/llm-wiki/main/wiki/{{ $fromAI(\"File_Name\", \"檔名，例如 2026-07-22-rag.md\", \"string\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "03404171-7b32-49fd-95c8-47a5ee0ef4db",
+      "name": "wiki-reader2",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [1040, 768]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Ingest (Write)",
+        "height": 448,
+        "width": 1332,
+        "color": 2
+      },
+      "id": "63dd27fc-045a-4ccb-94ca-e2f171b95ddc",
+      "name": "Sticky Note a7fab4f4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-32, -48]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Query (Read)",
+        "height": 448,
+        "width": 1328,
+        "color": 4
+      },
+      "id": "3a4c9fcc-1032-433b-9986-249296f5630c",
+      "name": "Sticky Note 83d49d09",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-32, 464]
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "get-current-index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-current-index": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "M1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "index-updater": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wiki_creater": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wiki-reader": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wiki_updater": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "get-current-index2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-current-index2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "M2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wiki-reader2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
